@@ -1,0 +1,2 @@
+[alias]
+coverage = "llvm-cov --package slugify-rs --html --ignore-filename-regex '/usr/src|/rustc-' --open"
