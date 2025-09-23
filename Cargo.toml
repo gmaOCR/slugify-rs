@@ -19,6 +19,7 @@ html-escape = "0.2"
 unicode-segmentation = "1"
 
 [lib]
+name = "python_slugify_pi"
 crate-type = ["cdylib"]
 
 [features]
