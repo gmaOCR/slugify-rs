@@ -27,7 +27,8 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install maturin pytest pytest-cov
+          # Ensure coverage backend is installed so pytest-cov can write XML
+          pip install maturin pytest pytest-cov coverage
 
       - name: Run Rust unit tests (slugify-rs crate only)
         run: |
@@ -41,10 +42,26 @@ jobs:
       - name: Run Python tests with coverage
         run: |
           . .venv/bin/activate
-          pytest tests/python --cov=src --cov-report=xml
+          # Generate coverage XML at repository root as coverage.xml
+          pytest tests/python --cov=src --cov-report=xml:coverage.xml
+
+      - name: Show coverage artifact for debugging
+        run: |
+          . .venv/bin/activate
+          echo "Current working directory: $(pwd)"
+          ls -la
+          if [ -f coverage.xml ]; then
+            echo "coverage.xml found:"; head -n 40 coverage.xml
+          else
+            echo "coverage.xml NOT found"
+            exit 1
+          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
+          files: coverage.xml
           fail_ci_if_error: false
+          # If your repo requires a Codecov token (private/protected branches),
+          # set the secret `CODECOV_TOKEN` and uncomment the next line:
+          # token: ${{ secrets.CODECOV_TOKEN }}
