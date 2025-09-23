@@ -62,6 +62,47 @@ pip install target/wheels/*.whl
 `develop` installs the built extension into your venv for quicker
 iteration. `build` produces a wheel in `target/wheels/` for distribution.
 
+Note: if `maturin` picks the wrong Python interpreter, pass the exact
+interpreter path with `-i`, for example `-i /home/user/.venv/bin/python`.
+
+Quick test (after `maturin develop` or installing the wheel):
+
+```bash
+python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été!\"))"
+```
+
+Minimal GitHub Actions snippet for building wheels with `maturin`:
+
+```yaml
+# .github/workflows/python-wheels.yml
+name: Build Python wheels
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install maturin
+        run: pip install maturin
+      - name: Build wheels
+        run: maturin build --release --manylinux 2014 --features python
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: target/wheels/*.whl
+```
+
 ## Example (Python)
 
 ```python
