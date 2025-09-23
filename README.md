@@ -2,6 +2,11 @@ slugify-rs
 
 Rust implementation of slugify with optional PyO3 bindings.
 
+[![status-image]][status-link]
+[![version-image]][version-link]
+[![coverage-image]][coverage-link]
+
+
 This crate provides a fast Rust core for string slugification and an
 optional Python extension module (via PyO3) for use from Python
 projects. The Python module is exposed as `python_slugify_pi` when the
@@ -142,4 +147,11 @@ and CI workflows. In GitHub Actions you can use the official
 
 ## License
 
-This crate uses the license(s) specified in `Cargo.toml`.
+This crate uses the license(s) MIT.
+
+[status-image]: https://github.com/un33k/python-slugify/actions/workflows/ci.yml/badge.svg
+[status-link]: https://github.com/un33k/python-slugify/actions/workflows/ci.yml
+[version-image]: https://img.shields.io/pypi/v/python-slugify.svg
+[version-link]: https://pypi.python.org/pypi/python-slugify
+[coverage-image]: https://coveralls.io/repos/un33k/python-slugify/badge.svg
+[coverage-link]: https://coveralls.io/r/un33k/python-slugify
