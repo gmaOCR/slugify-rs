@@ -1,4 +1,4 @@
-slugify-rs
+## slugify-rs
 
 Rust implementation of slugify with optional PyO3 bindings.
 

@@ -66,3 +66,34 @@ jobs:
           files: coverage.xml
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Collect Rust coverage with cargo-llvm-cov and upload to Codecov
+  rust-coverage:
+    runs-on: ubuntu-latest
+    needs: test-slugify-rs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install llvm tools and cargo-llvm-cov
+        run: |
+          rustup component add llvm-tools-preview || true
+          cargo install cargo-llvm-cov || true
+
+      - name: Run rust coverage and produce lcov
+        run: |
+          # Generate lcov info for the crate. cargo-llvm-cov will run tests with
+          # instrumentation and collect coverage data.
+          cargo llvm-cov --package slugify-rs --lcov --output-path lcov.info
+
+      - name: Upload rust coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
