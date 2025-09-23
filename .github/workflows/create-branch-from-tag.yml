@@ -1,0 +1,42 @@
+name: Create branch from tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  branch-from-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo (fetch tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push branch from tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Extract the tag name from GITHUB_REF (refs/tags/v1.2.3)
+          TAG_REF=${GITHUB_REF#refs/tags/}
+          echo "Tag ref: $TAG_REF"
+
+          # Strip leading 'v' if present to create branch name like release/1.2.3
+          TAG_NO_V=${TAG_REF#v}
+          BRANCH_NAME="release/${TAG_NO_V}"
+          echo "Creating branch: $BRANCH_NAME"
+
+          # Create branch at the tag commit and push it
+          git fetch --tags
+          git checkout -b "$BRANCH_NAME" "$TAG_REF"
+          git push origin "$BRANCH_NAME"
+
+      - name: Output
+        run: |
+          echo "Branch created from tag: $GITHUB_REF"
