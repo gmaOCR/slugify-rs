@@ -64,7 +64,7 @@ fn slugify(
 }
 
 #[pymodule]
-fn python_slugify_pi(m: &pyo3::prelude::Bound<'_, pyo3::types::PyModule>) -> PyResult<()> {
+fn python_slugify_pi(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(slugify, m)?)?;
     Ok(())
 }
