@@ -149,9 +149,9 @@ and CI workflows. In GitHub Actions you can use the official
 
 This crate uses the license(s) MIT.
 
-[status-image]: https://github.com/un33k/python-slugify/actions/workflows/ci.yml/badge.svg
-[status-link]: https://github.com/un33k/python-slugify/actions/workflows/ci.yml
+[status-image]: https://github.com/gmaOCR/python-slugify/actions/workflows/ci.yml/badge.svg
+[status-link]: https://github.com/gmaOCR/python-slugify/actions/workflows/ci.yml
 [version-image]: https://img.shields.io/pypi/v/python-slugify.svg
 [version-link]: https://pypi.python.org/pypi/python-slugify
-[coverage-image]: https://coveralls.io/repos/un33k/python-slugify/badge.svg
-[coverage-link]: https://coveralls.io/r/un33k/python-slugify
+[coverage-image]: https://coveralls.io/repos/gmaOCR/python-slugify/badge.svg
+[coverage-link]: https://coveralls.io/r/gmaOCR/python-slugify
