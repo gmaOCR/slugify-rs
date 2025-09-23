@@ -32,5 +32,7 @@ optional = true
 features = ["extension-module"]
 
 [package.metadata.maturin]
+# Force maturin to use PyO3 bindings (avoid cffi auto-detection)
+bindings = "pyo3"
 # Optional: specify the exact PyPI package name (uncomment to override)
 # name = "slugify-rs"

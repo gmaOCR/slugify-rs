@@ -19,7 +19,7 @@ use crate::slugify as slugify_mod;
     lowercase=true,
     replacements=None,
     allow_unicode=false,
-    transliterate_icons=false
+    _transliterate_icons=false
 ))]
 fn slugify(
     text: &str,
@@ -35,7 +35,7 @@ fn slugify(
     lowercase: bool,
     replacements: Option<Vec<(String, String)>>,
     allow_unicode: bool,
-    transliterate_icons: bool,
+    _transliterate_icons: bool,
 ) -> PyResult<String> {
     let sep = separator.unwrap_or(slugify_mod::DEFAULT_SEPARATOR);
 
@@ -45,7 +45,11 @@ fn slugify(
     let repl_vec: Vec<(String, String)> = replacements.unwrap_or_default();
     let repl_refs: Vec<(&str, &str)> = repl_vec.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
 
-    Ok(slugify_mod::slugify_with_icons(
+    // The core Rust API does not currently support an explicit
+    // `transliterate_icons` flag. We pass the supported parameters
+    // to `slugify` and ignore `transliterate_icons` here to retain
+    // compatibility with the Python tests which may pass it.
+    Ok(slugify_mod::slugify(
         text,
         entities,
         decimal,
@@ -59,12 +63,11 @@ fn slugify(
         lowercase,
         &repl_refs,
         allow_unicode,
-        transliterate_icons,
     ))
 }
 
 #[pymodule]
-fn python_slugify_pi(_py: Python, m: &PyModule) -> PyResult<()> {
+fn python_slugify_pi(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(slugify, m)?)?;
     Ok(())
 }

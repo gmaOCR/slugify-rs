@@ -4,13 +4,13 @@ import pytest
 try:
     from slugify.slugify import slugify as py_slugify
 except Exception as e:
-    pytest.skip(f"python-slugify not available: {e}")
+    pytest.skip(f"python-slugify not available: {e}", allow_module_level=True)
 
 try:
     import python_slugify_pi
     rs_slugify = python_slugify_pi.slugify
 except Exception as e:
-    pytest.skip(f"Rust binding not available: {e}")
+    pytest.skip(f"Rust binding not available: {e}", allow_module_level=True)
 
 EXAMPLES = [
     ("C'est déjà l'été.", {}),
