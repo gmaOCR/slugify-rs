@@ -19,6 +19,11 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Install maturin
         run: |
           python -m venv .venv
@@ -26,12 +31,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install maturin
 
-      - name: Publish via OIDC (Trusted Publisher)
-        env:
-          PYPI_USERNAME: __token__
+      - name: Build wheels (maturin)
         run: |
           . .venv/bin/activate
-          # maturin supports using the PyPI token from the environment;
-          # with OIDC as a trusted publisher, the PyPI project will allow
-          # the GitHub Actions job to publish without storing a long-lived token here.
-          .venv/bin/maturin publish --no-sdist --manylinux off
+          .venv/bin/maturin build --release --manylinux off -o dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
