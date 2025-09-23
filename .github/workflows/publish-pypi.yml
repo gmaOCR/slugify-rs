@@ -35,6 +35,22 @@ jobs:
         run: |
           . .venv/bin/activate
           .venv/bin/maturin build --release --manylinux off -o dist/
+      - name: Mint PyPI API token (debug)
+        id: mint-token
+        run: |
+          # Retrieve OIDC token (runner provides request token in environment)
+          resp=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=pypi")
+          echo "oidc response: $(echo $resp | jq -c '.')"
+          oidc_token=$(echo "$resp" | jq -r '.value')
+          if [ -z "$oidc_token" ] || [ "$oidc_token" = "null" ]; then
+            echo "No OIDC token received" >&2
+            exit 1
+          fi
+          # Exchange for short-lived API token
+          mint_resp=$(curl -s -X POST https://pypi.org/_/oidc/mint-token -d "{\"token\": \"${oidc_token}\"}")
+          echo "::add-mask::${mint_resp}"
+          echo "mint_resp: $(echo $mint_resp | jq -c '.')"
+          echo "api-token=$(echo $mint_resp | jq -r '.token')" >> "$GITHUB_OUTPUT"
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
