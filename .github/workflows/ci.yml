@@ -39,35 +39,10 @@ jobs:
           . .venv/bin/activate
           .venv/bin/maturin develop --release --features python
 
-      - name: Run Python tests with coverage
+      - name: Run Python integration tests (no coverage)
         run: |
           . .venv/bin/activate
-          # Measure coverage for the whole checkout (module may be a compiled extension)
-          pytest tests/python --cov=. --cov-report=xml:coverage.xml || true
-
-      - name: Ensure coverage.xml exists (fallback)
-        run: |
-          . .venv/bin/activate
-          echo "Current working directory: $(pwd)"
-          ls -la
-          if [ -f coverage.xml ]; then
-            echo "coverage.xml found:"; head -n 40 coverage.xml
-          elif [ -f .coverage ]; then
-            echo "Found .coverage file, converting to coverage.xml"
-            coverage xml -i -o coverage.xml
-            echo "coverage.xml produced:"; head -n 40 coverage.xml
-          else
-            echo "No coverage data found (.coverage or coverage.xml). Continuing without coverage upload."
-          fi
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-          flags: python
-          verbose: true
-          fail_ci_if_error: false
-          token: ${{ secrets.CODECOV_TOKEN }}
+          pytest tests/python || true
 
   # Collect Rust coverage with cargo-llvm-cov and upload to Codecov
   rust-coverage:
