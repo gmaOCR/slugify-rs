@@ -22,8 +22,10 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install maturin and test dependencies
+      - name: Create virtualenv and install maturin and test dependencies
         run: |
+          python -m venv .venv
+          . .venv/bin/activate
           python -m pip install --upgrade pip
           pip install maturin pytest pytest-cov
 
@@ -33,10 +35,12 @@ jobs:
 
       - name: Build and install Python extension for tests
         run: |
-          maturin develop --release --features python
+          . .venv/bin/activate
+          .venv/bin/maturin develop --release --features python
 
       - name: Run Python tests with coverage
         run: |
+          . .venv/bin/activate
           pytest tests/python --cov=src --cov-report=xml
 
       - name: Upload coverage to Codecov
