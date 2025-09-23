@@ -115,3 +115,42 @@ Further reading
 
 - maturin documentation: https://maturin.rs/
 - PyO3 documentation: https://pyo3.rs/
+
+Trusted Publisher (PyPI) — Quick Guide
+-------------------------------------
+
+If you want to publish using GitHub Actions without storing a long-lived PyPI token,
+use PyPI Trusted Publishers (OIDC). Steps:
+
+1. Create or register a Trusted Publisher on PyPI
+   - Go to https://pypi.org/trusted-publishers/ and follow the "Create a Trusted Publisher"
+     flow. Choose GitHub Actions as the provider and authorize the connection to your
+     GitHub organization.
+
+2. Associate the publisher with this project
+   - On your project's PyPI page, add the Trusted Publisher to allow the publisher to
+     publish releases for this project.
+
+3. Ensure GitHub workflow has `id-token: write`
+   - The publish job must include `permissions: id-token: write` at job level. Our
+     `.github/workflows/publish-pypi.yml` already sets that.
+
+4. Use `pypa/gh-action-pypi-publish` in the workflow
+   - The repository contains a workflow that builds the wheel via `maturin` and then
+     calls `pypa/gh-action-pypi-publish@release/v1`. This action automatically uses
+     OIDC when the Trusted Publisher is configured.
+
+5. Create a release/tag to trigger publishing
+   - Push an annotated tag `vX.Y.Z` or create a GitHub Release — the workflow triggers
+     when a tag is pushed (see `.github/workflows/publish-pypi.yml`).
+
+6. Approvals and Environments
+   - If you configure a GitHub `environment` for publishing (e.g. `pypi`) and require
+     approvals, the job will pause until approved. Consider using job-level `id-token`
+     permissions to avoid workflow-level exposure.
+
+7. Troubleshooting
+   - If publishing fails, inspect the Actions run logs for the `Publish package` step.
+   - Common errors: missing `id-token` permission, Trusted Publisher not associated
+     with the project, or environment protections requiring approval.
+
