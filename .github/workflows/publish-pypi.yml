@@ -38,7 +38,8 @@ jobs:
       - name: Build wheels (maturin)
         run: |
           . .venv/bin/activate
-          .venv/bin/maturin build --release --manylinux off -o dist/
+          # Build manylinux2014 wheels so PyPI accepts the binary platform tag
+          ./.venv/bin/maturin build --release --manylinux 2014 -o dist/
       - name: Mint PyPI API token (debug)
         id: mint-token
         run: |
