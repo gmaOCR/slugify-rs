@@ -64,6 +64,8 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: coverage.xml
+          flags: python
+          verbose: true
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -92,8 +94,18 @@ jobs:
           # instrumentation and collect coverage data.
           cargo llvm-cov --package slugify-rs --lcov --output-path lcov.info
 
+      - name: Show lcov head for debugging
+        run: |
+          echo "lcov.info exists: $(test -f lcov.info && echo yes || echo no)"
+          if [ -f lcov.info ]; then
+            head -n 40 lcov.info
+          fi
+
       - name: Upload rust coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: lcov.info
+          flags: rust
+          verbose: true
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
