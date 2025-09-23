@@ -4,9 +4,12 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  release:
+    types: [published]
+  workflow_dispatch: {}
 
 jobs:
-  publish:
+  pypi-publish:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
