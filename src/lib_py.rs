@@ -1,10 +1,10 @@
-#![cfg(feature = "python")]
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 use crate::slugify as slugify_mod;
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 #[pyo3(signature=(
     text,
     entities=true,
@@ -43,27 +43,36 @@ fn slugify(
     let stop_refs: Vec<&str> = stop_vec.iter().map(|s| s.as_str()).collect();
 
     let repl_vec: Vec<(String, String)> = replacements.unwrap_or_default();
-    let repl_refs: Vec<(&str, &str)> = repl_vec.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+    let repl_refs: Vec<(&str, &str)> = repl_vec
+        .iter()
+        .map(|(a, b)| (a.as_str(), b.as_str()))
+        .collect();
 
     // The core Rust API does not currently support an explicit
     // `transliterate_icons` flag. We pass the supported parameters
     // to `slugify` and ignore `transliterate_icons` here to retain
     // compatibility with the Python tests which may pass it.
-    Ok(slugify_mod::slugify(
-        text,
-        entities,
-        decimal,
-        hexadecimal,
-        max_length,
-        word_boundary,
-        sep,
-        save_order,
-        &stop_refs,
-        regex_pattern.as_deref(),
-        lowercase,
-        &repl_refs,
-        allow_unicode,
-    ))
+    // Build SlugifyOptions using the ergonomic builder API and call the
+    // options-based public function.
+    let builder = slugify_mod::SlugifyOptions::builder()
+        .entities(entities)
+        .decimal(decimal)
+        .hexadecimal(hexadecimal)
+        .max_length(max_length)
+        .word_boundary(word_boundary)
+        .separator(sep)
+        .save_order(save_order)
+        .stopwords(stop_refs)
+        .regex_pattern(regex_pattern.as_deref().map(|s| s.to_string()))
+        .lowercase(lowercase)
+        .replacements(repl_refs)
+        .allow_unicode(allow_unicode);
+
+    let opts = builder
+        .build()
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("invalid args: {:?}", e)))?;
+
+    Ok(slugify_mod::slugify_with_options_public(&opts, text))
 }
 
 #[pymodule]

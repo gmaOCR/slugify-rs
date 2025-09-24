@@ -1,0 +1,23 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: scripts/pre-commit.sh fmt
+        language: script
+        files: '\.(rs)$'
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: scripts/pre-commit.sh clippy
+        language: script
+        files: '\.(rs)$'
+      - id: cargo-tests
+        name: cargo test (lib)
+        entry: scripts/pre-commit.sh test
+        language: script
+        stages: [commit]
+      - id: cargo-audit
+        name: cargo audit (optional)
+        entry: scripts/pre-commit.sh audit
+        language: script
+        always_run: false

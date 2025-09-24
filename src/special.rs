@@ -69,17 +69,41 @@ pub fn apply_pre_translations(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::slugify::{slugify, DEFAULT_SEPARATOR};
+    
 
     #[test]
     fn test_pre_translations_exact_sequence() {
         let expected: Vec<(&str, &str)> = vec![
-            ("Ю", "U"), ("Щ", "Sch"), ("У", "Y"), ("Х", "H"), ("Я", "Ya"),
-            ("Ё", "E"), ("ё", "e"), ("я", "ya"), ("х", "h"), ("у", "y"),
-            ("щ", "sch"), ("ю", "u"), ("Ü", "Ue"), ("Ö", "Oe"), ("Ä", "Ae"),
-            ("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("Ϋ́", "Y"), ("Ϋ", "Y"),
-            ("Ύ", "Y"), ("Υ", "Y"), ("Χ", "Ch"), ("χ", "ch"), ("Ξ", "X"),
-            ("ϒ", "Y"), ("υ", "y"), ("ύ", "y"), ("ϋ", "y"), ("ΰ", "y"),
+            ("Ю", "U"),
+            ("Щ", "Sch"),
+            ("У", "Y"),
+            ("Х", "H"),
+            ("Я", "Ya"),
+            ("Ё", "E"),
+            ("ё", "e"),
+            ("я", "ya"),
+            ("х", "h"),
+            ("у", "y"),
+            ("щ", "sch"),
+            ("ю", "u"),
+            ("Ü", "Ue"),
+            ("Ö", "Oe"),
+            ("Ä", "Ae"),
+            ("ä", "ae"),
+            ("ö", "oe"),
+            ("ü", "ue"),
+            ("Ϋ́", "Y"),
+            ("Ϋ", "Y"),
+            ("Ύ", "Y"),
+            ("Υ", "Y"),
+            ("Χ", "Ch"),
+            ("χ", "ch"),
+            ("Ξ", "X"),
+            ("ϒ", "Y"),
+            ("υ", "y"),
+            ("ύ", "y"),
+            ("ϋ", "y"),
+            ("ΰ", "y"),
         ];
         let pre = pre_translations();
         assert_eq!(pre.len(), expected.len());
@@ -101,23 +125,23 @@ mod tests {
     #[test]
     fn test_apply_pre_translations_integration_with_slugify() {
         let input = "ё ÜBER";
-        let pre = apply_pre_translations(input.as_ref());
-        let out = slugify(
-            &pre,
-            true,
-            true,
-            true,
-            0,
-            false,
-            DEFAULT_SEPARATOR,
-            false,
-            &[],
-            None,
-            true,
-            &[],
-            false,
-        );
+        let pre = apply_pre_translations(input);
+        let opts = crate::slugify::SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(crate::slugify::DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .build()
+            .unwrap();
+        let out = crate::slugify::slugify_with_options_public(&opts, &pre);
         assert_eq!(out, "e-ueber");
     }
 }
-

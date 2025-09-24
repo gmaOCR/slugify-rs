@@ -1,248 +1,119 @@
-## slugify-rs
+## slugify-rs — simple and fast slugs for text
 
-Rust implementation of slugify with optional PyO3 bindings.
+This project provides a small Rust library that turns text into a
+"slug" — a short, URL-friendly string. For example, "Hello World!"
+becomes "hello-world". There is also an optional Python extension so
+Python programs can use the same fast Rust logic.
 
-[![status-image]][status-link]
-[![version-image]][version-link]
-[![coverage-image]][coverage-link]
+This README explains how to use the library, how to build the
+Python extension, and how to run tests. Instructions are written for
+readers who may not be familiar with Rust or Python packaging.
 
+Quick summary
 
-This crate provides a fast Rust core for string slugification and an
-optional Python extension module (via PyO3) for use from Python
-projects. The Python module is exposed as `python_slugify_pi` when the
-`python` Cargo feature is enabled.
+- Rust users: call the library from your Rust code.
+- Python users: build and install the small extension (wheel) using
+  `maturin` (instructions below), then call `python_slugify_pi.slugify()`.
 
-## Quick start
+Basic example (Python)
 
-If you only use Rust, add the crate to your `Cargo.toml` and call
-`slugify` from Rust. If you want a Python extension, build a wheel with
-`maturin` (instructions below).
+```python
+import python_slugify_pi
 
-## Prerequisites
-
-- Rust toolchain: install `rustup` (Rust 1.56+ recommended):
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+print(python_slugify_pi.slugify("C'est déjà l'été!"))
+# control emoji handling: default keeps compatibility with Python
+print(python_slugify_pi.slugify("I ♥ 🚀"))
+print(python_slugify_pi.slugify("I ♥ 🚀", transliterate_icons=True))
 ```
 
-- Python 3.8+ and a working `pip`.
-- On Debian/Ubuntu install system build deps:
+Quick test after installing the extension
 
 ```bash
-sudo apt update && sudo apt install -y build-essential pkg-config python3-dev libssl-dev
+python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été!\"))"
 ```
 
-- Install `maturin` in your Python virtualenv to build wheels:
+Prerequisites (short)
+
+- A recent Rust toolchain (install `rustup`).
+- Python 3.8 or newer when you want the Python extension.
+- `maturin` (a small tool to build Python extension wheels) if you
+  want the Python module.
+
+If you use Linux, you may also need system build tools (see the
+BUILD instructions below for exact commands).
+
+How to build and install the Python extension (developer mode)
+
+1. Create and activate a Python virtual environment (recommended):
 
 ```bash
-python -m venv .venv
-. .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+2. Install `maturin` into the virtual environment:
+
+```bash
 pip install --upgrade pip
 pip install maturin
 ```
 
-Note: macOS users should ensure Xcode command line tools are installed.
-
-## Build & install Python wheel (recommended)
-
-For development (install directly into the active venv):
+3. Build and install the extension into the venv for development:
 
 ```bash
 maturin develop --release --features python
 ```
 
-To build a wheel for distribution and then install it:
+This command compiles the Rust code and installs a small Python package
+called `python_slugify_pi` into your virtual environment. You can then
+import and use it from Python immediately.
+
+How to build a distributable wheel
 
 ```bash
 maturin build --release -i python --features python
 pip install target/wheels/*.whl
 ```
 
-`develop` installs the built extension into your venv for quicker
-iteration. `build` produces a wheel in `target/wheels/` for distribution.
+This produces a wheel file in `target/wheels/` that you can share or
+upload to PyPI.
 
-Note: if `maturin` picks the wrong Python interpreter, pass the exact
-interpreter path with `-i`, for example `-i /home/user/.venv/bin/python`.
+Running tests
 
-Quick test (after `maturin develop` or installing the wheel):
-
-```bash
-python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été!\"))"
-```
-
-Minimal GitHub Actions snippet for building wheels with `maturin`:
-
-```yaml
-# .github/workflows/python-wheels.yml
-name: Build Python wheels
-
-on: [push, pull_request]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-      - name: Install maturin
-        run: pip install maturin
-      - name: Build wheels
-        run: maturin build --release --manylinux 2014 --features python
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels
-          path: target/wheels/*.whl
-```
-
-## Example (Python)
-
-```python
-import python_slugify_pi
-
-print(python_slugify_pi.slugify("C'est déjà l'été!"))
-
-# Control icon transliteration (default False for Python parity)
-print(python_slugify_pi.slugify("I ♥ 🚀"))
-print(python_slugify_pi.slugify("I ♥ 🚀", transliterate_icons=True))
-```
-
-## Cargo.toml snippet
-
-Add the optional `python` feature and set the crate type when building
-for Python (example):
-
-```toml
-[package]
-name = "slugify-rs"
-version = "0.1.0"
-
-[lib]
-crate-type = ["cdylib"]
-
-[features]
-default = []
-python = ["pyo3/extension-module"]
-
-[dependencies]
-pyo3 = { version = "0.26", optional = true, features = ["extension-module"] }
-deunicode = "*"
-```
-
-When building with `maturin`, `--features python` will enable the
-PyO3 extension configuration.
-
-## Running tests
-
-Rust unit tests:
+- Rust unit tests (run from the project root):
 
 ```bash
 cargo test -p slugify-rs --lib
 ```
 
-Python integration tests (after installing the wheel or using
-`maturin develop`):
+- Python integration tests (after installing the wheel or using
+  `maturin develop`):
 
 ```bash
 pytest tests/python
 ```
 
-## Troubleshooting
+Notes and troubleshooting (simple)
 
-- Linker errors on Linux: ensure `build-essential` and `python3-dev` are
-  installed.
-- If `maturin` complains about the Python interpreter, pass `-i` with
-  the interpreter executable or path used to create the venv, e.g.
-  `-i /home/user/.venv/bin/python`.
-- If symbol transliteration differs from `python-slugify`, see the
-  `transliterate_icons` option documented below.
+- If `maturin` cannot find your Python interpreter, tell it which one
+  to use by adding `-i /path/to/python` to the `maturin` command.
+- On Debian/Ubuntu you may need to install system tools before
+  building: `sudo apt install build-essential pkg-config python3-dev`.
+- Emoji and symbols: the library tries to match Python behavior by
+  default, but you can change how emoji are handled with
+  `transliterate_icons` (see examples).
 
-## Transliteration of icons / emoji
+How the pre-translations work
 
-The Rust implementation uses `deunicode` for transliteration, which may
-map certain symbols or emoji to English words (for example `♥` ->
-`"hearts"`, `🚀` -> `"rocket"`). The reference Python implementation
-(`text-unidecode`) handles some symbols differently (often removing
-them), which can cause output mismatches.
+There is a small table of language-specific replacements (for
+Cyrillic, German, Greek). These are not applied automatically. You can
+either pass them as initial `replacements` or call
+`apply_pre_translations()` before slugifying if you want the same
+behavior as the original Python library.
 
-The PyO3 binding exposes a keyword argument `transliterate_icons`
-(default: `False`). When `True`, symbol/emoji characters are
-transliterated to words by the Rust code. When `False`, symbol/emoji
-characters are removed before transliteration to match the common
-Python behavior.
+License
 
-## Reproducing Python's `PRE_TRANSLATIONS` behavior
-
-The original Python library exposes a `PRE_TRANSLATIONS` table that
-contains language-specific replacements (Cyrillic, German, Greek).
-By default the Python `slugify` function does not apply these
-pre-translations automatically — transliteration is performed by
-`unidecode`.
-
-If you want the same effect from Rust (apply these pre-translations
-before slugification), there are two simple options:
-
-- Use `PRE_TRANSLATIONS` as `replacements` when calling `slugify`
-  (replacements are applied at the start of the pipeline):
-
-```rust
-use slugify_rs::special::pre_translations;
-use slugify_rs::slugify;
-
-let input = "Компьютер";
-let replacements: Vec<(&str, &str)> = pre_translations().iter().copied().collect();
-let result = slugify(
-    input,
-    true,  // entities
-    true,  // decimal
-    true,  // hexadecimal
-    0,     // max_length
-    false, // word_boundary
-    "-", // separator
-    false, // save_order
-    &[],   // stopwords
-    None,  // regex_pattern
-    true,  // lowercase
-    &replacements,
-    false, // allow_unicode
-);
-assert_eq!(result, "komputer");
-```
-
-- Or call `apply_pre_translations` explicitly before `slugify`:
-
-```rust
-use slugify_rs::special::apply_pre_translations;
-use slugify_rs::slugify;
-
-let input = "Компьютер";
-let pre = apply_pre_translations(input);
-let result = slugify(pre.as_str(), true, true, true, 0, false, "-", false, &[], None, true, &[], false);
-assert_eq!(result, "komputer");
-```
-
-Both methods produce the same effect as applying `PRE_TRANSLATIONS`
-before transliteration in Python, and can be used to maintain output
-compatibility.
-
-## CI / manylinux
-
-For publishing to PyPI, build manylinux wheels. `maturin` has a
-`--manylinux` option; see `maturin` docs for recommended Docker images
-and CI workflows. In GitHub Actions you can use the official
-`maturin/action` for cross-platform builds.
-
-## License
-
-This crate uses the license(s) MIT.
+This project is available under the MIT license.
 
 [status-image]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml/badge.svg
 [status-link]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml
