@@ -75,7 +75,7 @@ fn slugify(
     Ok(slugify_mod::slugify_with_options_public(&opts, text))
 }
 
-#[pymodule]
+#[pymodule(name = "slugify_rs")]
 fn python_slugify_pi(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(slugify, m)?)?;
     Ok(())

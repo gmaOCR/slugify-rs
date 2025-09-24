@@ -34,11 +34,11 @@ optional = true
 features = ["extension-module"]
 
 # Package metadata for maturin
+# Package metadata for maturin
 [package.metadata.maturin]
 # Force maturin to use PyO3 bindings (avoid cffi auto-detection)
 bindings = "pyo3"
-# Ensure Python module name matches the PyO3 `#[pymodule]` name
-# (the Rust code defines `#[pymodule] fn python_slugify_pi(...)`).
-module-name = "python_slugify_pi"
+# Ensure Python module name matches the PyO3 `#[pymodule]` name and wheel name
+module-name = "slugify_rs"
 # Optional: specify the exact PyPI package name (uncomment to override)
 # name = "slugify-rs"

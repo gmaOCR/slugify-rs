@@ -31,4 +31,4 @@ jobs:
           .venv/bin/maturin develop --release --features python
       - name: Quick import smoke test
         run: |
-          .venv/bin/python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été\"))"
+          .venv/bin/python -c "import slugify_rs; print(slugify_rs.slugify(\"C'est déjà l'été\"))"
