@@ -8,6 +8,9 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Default separator used by slugify
 pub const DEFAULT_SEPARATOR: &str = "-";
 
+// `special` is now a crate-level module in `src/special.rs`.
+pub use crate::special::apply_pre_translations;
+
 // Regex patterns (compiled once)
 pub static CHAR_ENTITY_PATTERN: Lazy<Regex> = Lazy::new(|| {
     // Match named entities like &amp; &nbsp; etc. Full name-to-codepoint map
@@ -151,7 +154,9 @@ impl SlugifyOptions {
 
 // New internal API that takes the options struct. Keeps behavior identical.
 fn slugify_with_options(input: &str, opts: &SlugifyOptions) -> String {
-    // 1. Apply pre and post replacements, normalization, decoding and sanitization
+    // 1. Apply user replacements first (match python-slugify behavior).
+    // Note: pre-translations are available via `crate::special::apply_pre_translations`
+    // but are NOT applied by default to preserve original Python semantics.
     let after_replacements = apply_replacements(input, &opts.replacements);
 
     // 2. Replace quotes with separator early to avoid merging words

@@ -179,6 +179,60 @@ transliterated to words by the Rust code. When `False`, symbol/emoji
 characters are removed before transliteration to match the common
 Python behavior.
 
+## Reproducing Python's `PRE_TRANSLATIONS` behavior
+
+The original Python library exposes a `PRE_TRANSLATIONS` table that
+contains language-specific replacements (Cyrillic, German, Greek).
+By default the Python `slugify` function does not apply these
+pre-translations automatically — transliteration is performed by
+`unidecode`.
+
+If you want the same effect from Rust (apply these pre-translations
+before slugification), there are two simple options:
+
+- Use `PRE_TRANSLATIONS` as `replacements` when calling `slugify`
+  (replacements are applied at the start of the pipeline):
+
+```rust
+use slugify_rs::special::pre_translations;
+use slugify_rs::slugify;
+
+let input = "Компьютер";
+let replacements: Vec<(&str, &str)> = pre_translations().iter().copied().collect();
+let result = slugify(
+    input,
+    true,  // entities
+    true,  // decimal
+    true,  // hexadecimal
+    0,     // max_length
+    false, // word_boundary
+    "-", // separator
+    false, // save_order
+    &[],   // stopwords
+    None,  // regex_pattern
+    true,  // lowercase
+    &replacements,
+    false, // allow_unicode
+);
+assert_eq!(result, "komputer");
+```
+
+- Or call `apply_pre_translations` explicitly before `slugify`:
+
+```rust
+use slugify_rs::special::apply_pre_translations;
+use slugify_rs::slugify;
+
+let input = "Компьютер";
+let pre = apply_pre_translations(input);
+let result = slugify(pre.as_str(), true, true, true, 0, false, "-", false, &[], None, true, &[], false);
+assert_eq!(result, "komputer");
+```
+
+Both methods produce the same effect as applying `PRE_TRANSLATIONS`
+before transliteration in Python, and can be used to maintain output
+compatibility.
+
 ## CI / manylinux
 
 For publishing to PyPI, build manylinux wheels. `maturin` has a

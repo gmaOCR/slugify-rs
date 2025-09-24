@@ -1,4 +1,8 @@
 pub mod slugify;
+pub mod special;
+
+// Re-export modules for easier external access (integration tests / consumers)
+pub use slugify as slugify_mod;
 
 pub use slugify::{DEFAULT_SEPARATOR, slugify, smart_truncate};
 
