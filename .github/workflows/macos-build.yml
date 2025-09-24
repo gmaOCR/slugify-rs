@@ -25,7 +25,7 @@ jobs:
       - name: Build wheel with maturin
         run: |
           # Install build deps and build the extension in-place
-          maturin develop --release --no-sdist --manylinux off --features python
+          maturin develop --release --features python
       - name: Quick import smoke test
         run: |
           python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été\"))"
