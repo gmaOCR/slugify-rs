@@ -22,6 +22,7 @@ aho-corasick = "1.1"
 [lib]
 # Produce both rlib for Rust consumers (tests, other crates) and cdylib for Python bindings
 crate-type = ["rlib", "cdylib"]
+name = "slugify_rs"
 
 [features]
 default = []
@@ -35,5 +36,7 @@ features = ["extension-module"]
 [package.metadata.maturin]
 # Force maturin to use PyO3 bindings (avoid cffi auto-detection)
 bindings = "pyo3"
+# Ensure Python module name contains no hyphen (maturin requires this)
+module-name = "slugify_rs"
 # Optional: specify the exact PyPI package name (uncomment to override)
 # name = "slugify-rs"

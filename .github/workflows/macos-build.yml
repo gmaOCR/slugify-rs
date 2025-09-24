@@ -1,0 +1,31 @@
+name: Build macOS Python wheel
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install maturin
+        run: pip install --upgrade pip maturin
+      - name: Build wheel with maturin
+        run: |
+          # Install build deps and build the extension in-place
+          maturin develop --release --no-sdist --manylinux off --features python
+      - name: Quick import smoke test
+        run: |
+          python -c "import python_slugify_pi; print(python_slugify_pi.slugify(\"C'est déjà l'été\"))"

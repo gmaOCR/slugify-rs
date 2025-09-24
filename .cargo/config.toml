@@ -1,2 +1,10 @@
 [alias]
 coverage = "llvm-cov --package slugify-rs --html --ignore-filename-regex '/usr/src|/rustc-' --open"
+
+[target.aarch64-apple-darwin]
+rustflags = [
+	"-C", "link-arg=-undefined",
+	"-C", "link-arg=dynamic_lookup",
+]
+# If you cross-compile locally with osxcross you may need to set a linker
+# linker = "o64-clang"
