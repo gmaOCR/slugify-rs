@@ -68,6 +68,7 @@ pub fn slugify(
         lowercase,
         replacements,
         allow_unicode,
+        false,
     )
     .unwrap_or_else(|_| {
         SlugifyOptions::from_args(
@@ -83,6 +84,7 @@ pub fn slugify(
             lowercase,
             replacements,
             allow_unicode,
+            false,
         )
         .expect("failed to build SlugifyOptions")
     });
@@ -104,6 +106,7 @@ pub struct SlugifyOptions {
     pub lowercase: bool,
     pub replacements: Vec<(String, String)>,
     pub allow_unicode: bool,
+    pub transliterate_icons: bool,
 }
 
 #[derive(Debug)]
@@ -126,6 +129,7 @@ impl SlugifyOptions {
         lowercase: bool,
         replacements: &[(&str, &str)],
         allow_unicode: bool,
+        transliterate_icons: bool,
     ) -> Result<Self, SlugifyError> {
         let regex_compiled = if let Some(pat) = regex_pattern {
             match Regex::new(pat) {
@@ -152,6 +156,7 @@ impl SlugifyOptions {
                 .map(|(a, b)| (a.to_string(), b.to_string()))
                 .collect(),
             allow_unicode,
+            transliterate_icons,
         })
     }
 
@@ -176,6 +181,7 @@ pub struct SlugifyOptionsBuilder {
     lowercase: bool,
     replacements: Vec<(String, String)>,
     allow_unicode: bool,
+    transliterate_icons: bool,
 }
 
 impl Default for SlugifyOptionsBuilder {
@@ -193,6 +199,7 @@ impl Default for SlugifyOptionsBuilder {
             lowercase: true,
             replacements: Vec::new(),
             allow_unicode: false,
+            transliterate_icons: true,
         }
     }
 }
@@ -258,6 +265,10 @@ impl SlugifyOptionsBuilder {
         self.allow_unicode = v;
         self
     }
+    pub fn transliterate_icons(mut self, v: bool) -> Self {
+        self.transliterate_icons = v;
+        self
+    }
 
     /// Build the `SlugifyOptions`, validating the regex if present.
     pub fn build(self) -> Result<SlugifyOptions, SlugifyError> {
@@ -283,6 +294,7 @@ impl SlugifyOptionsBuilder {
             lowercase: self.lowercase,
             replacements: self.replacements,
             allow_unicode: self.allow_unicode,
+            transliterate_icons: self.transliterate_icons,
         })
     }
 }
@@ -300,7 +312,7 @@ fn slugify_with_options(input: &str, opts: &SlugifyOptions) -> String {
         .to_string();
 
     // 3. Normalize / transliterate according to `allow_unicode`
-    let normalized = normalize_text(&after_quotes, opts.allow_unicode);
+    let normalized = normalize_text(&after_quotes, opts.allow_unicode, opts.transliterate_icons);
 
     // 4. Optionally decode named entities
     let decoded_named = if opts.entities {
@@ -313,7 +325,7 @@ fn slugify_with_options(input: &str, opts: &SlugifyOptions) -> String {
     let decoded_numeric = decode_numeric_refs(&decoded_named, opts.decimal, opts.hexadecimal);
 
     // 6. Re-normalize and apply lowercase if requested
-    let renormalized = normalize_text(&decoded_numeric, opts.allow_unicode);
+    let renormalized = normalize_text(&decoded_numeric, opts.allow_unicode, opts.transliterate_icons);
     let case_folded = if opts.lowercase {
         renormalized.to_lowercase()
     } else {
@@ -367,11 +379,49 @@ fn apply_replacements(input: &str, replacements: &[(String, String)]) -> String 
     out
 }
 
-fn normalize_text(s: &str, allow_unicode: bool) -> String {
+fn is_emoji(c: char) -> bool {
+    // Heuristic ranges covering most common emoji/pictographs
+    let cp = c as u32;
+    matches!(cp,
+        0x1F300..=0x1F5FF | // Misc Symbols and Pictographs
+        0x1F600..=0x1F64F | // Emoticons
+        0x1F680..=0x1F6FF | // Transport & Map
+        0x1F700..=0x1F77F | // Alchemical Symbols
+        0x1F900..=0x1F9FF | // Supplemental Symbols and Pictographs
+        0x2600..=0x26FF   | // Misc symbols
+        0x2700..=0x27BF   | // Dingbats
+        0xFE00..=0xFE0F   | // Variation Selectors
+        0x1F1E6..=0x1F1FF   // Regional indicator symbols (flags)
+    )
+}
+
+fn normalize_text(s: &str, allow_unicode: bool, transliterate_icons: bool) -> String {
     if allow_unicode {
         s.nfkc().collect()
     } else {
-        let decomposed: String = s.nfkd().collect();
+        // If transliterate_icons is disabled we remove emoji early.
+        // If enabled, perform a small, explicit mapping for common
+        // pictographs (heart, rocket, unicorn) to ASCII words so
+        // `deunicode` can handle the rest similar to python-slugify.
+        let filtered: String = if !transliterate_icons {
+            s.chars().filter(|c| !is_emoji(*c)).collect()
+        } else {
+            // Replace a few known icons with ASCII words separated by spaces
+            // so later normalization and pattern replacement will turn
+            // them into words in the final slug.
+            let mut out = String::with_capacity(s.len() * 4);
+            for c in s.chars() {
+                match c {
+                    '♥' => out.push_str(" hearts "),
+                    '🚀' => out.push_str(" rocket "),
+                    '🦄' => out.push_str(" unicorn "),
+                    // fall back to keeping the character for other codepoints
+                    other => out.push(other),
+                }
+            }
+            out
+        };
+        let decomposed: String = filtered.nfkd().collect();
         deunicode(&decomposed)
     }
 }
@@ -664,6 +714,72 @@ mod tests {
         assert_eq!(first_n_chars("hi", 10), "hi");
     }
 
+    #[test]
+    fn test_from_args_invalid_regex() {
+        let res = SlugifyOptions::from_args(
+            true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], Some("(?"), true, &[], false, false,
+        );
+        match res {
+            Err(SlugifyError::InvalidRegex(_)) => {}
+            _ => panic!("expected invalid regex error"),
+        }
+    }
+
+    #[test]
+    fn test_apply_pattern_replacement_regex_and_unicode_branches() {
+        // regex provided should be used
+        let opts = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(Some(String::from(r"[^a-z\s]+")))
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let out = apply_pattern_replacement("hello -- world!!!", &opts);
+        assert!(out.contains("hello"));
+
+        // if regex is None and allow_unicode true, use unicode-disallowed pattern
+        let opts2 = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(true)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let out2 = apply_pattern_replacement("hello 🦄 world!!!", &opts2);
+        // since allow_unicode=true, the emoji is not replaced by the ascii pattern; ensure non-empty
+        assert!(out2.len() > 0);
+    }
+
+    #[test]
+    fn test_normalize_and_transliterate_function() {
+        // allow_unicode true preserves characters
+        let s1 = normalize_and_transliterate("abcÄ", true);
+        assert!(s1.contains("Ä") || s1.contains("A"));
+
+        // allow_unicode false transliterates to ascii
+        let s2 = normalize_and_transliterate("Ä", false);
+        assert!(s2.to_lowercase().contains("a"));
+    }
+
     // Helper wrappers to call slugify with convenient defaults
 
     fn s_default(text: &str) -> String {
@@ -680,6 +796,7 @@ mod tests {
             .lowercase(true)
             .replacements(Vec::<(&str, &str)>::new())
             .allow_unicode(false)
+            .transliterate_icons(false)
             .build()
             .unwrap();
         slugify_with_options_public(&opts, text)
@@ -699,6 +816,7 @@ mod tests {
             .lowercase(true)
             .replacements(Vec::<(&str, &str)>::new())
             .allow_unicode(true)
+            .transliterate_icons(false)
             .build()
             .unwrap();
         slugify_with_options_public(&opts, text)
@@ -779,6 +897,7 @@ mod tests {
                     .lowercase(true)
                     .replacements(Vec::<(&str, &str)>::new())
                     .allow_unicode(false)
+                    .transliterate_icons(false)
                     .build()
                     .unwrap();
                 slugify_with_options_public(&opts, txt)

@@ -115,6 +115,76 @@ License
 
 This project is available under the MIT license.
 
+Golden tests — simple explanation (for anyone)
+------------------------------------------------
+
+What are golden tests?
+
+- Golden tests compare the output of this Rust implementation to the
+  output of the reference Python implementation. The goal is to
+  ensure the Rust behaviour matches the Python behaviour for a set
+  of representative examples.
+
+Why this matters (plain language)
+
+- If you change the code, golden tests help confirm we didn't
+  accidentally change how text is slugified. They are especially
+  useful for tricky cases like emoji, accents or custom replacements.
+
+How to run golden tests locally (easy)
+
+1. Create a Python virtual environment and install tools and the
+   reference Python package. From the project root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install maturin
+pip install ../python-slugify
+```
+
+2. Build and install the Rust Python binding into the venv (so the
+   harness can import it):
+
+```bash
+.venv/bin/maturin develop --release --features python
+```
+
+3. Run the golden harness (it will compare Python vs Rust outputs):
+
+```bash
+.venv/bin/python tests/golden_harness.py  # returns 0 on success
+```
+
+If the harness reports differences, it will print a small diff and
+exit with a non-zero code. The CI is configured to upload the harness
+log so we can inspect it when a run fails.
+
+How to regenerate golden outputs
+
+- The golden outputs are produced by the Python reference and stored
+  by the harness when you ask it to regenerate. To regenerate (and
+  overwrite the saved goldens), set the environment variable
+  `REGEN_GOLDEN=1` and run the harness:
+
+```bash
+REGEN_GOLDEN=1 .venv/bin/python tests/golden_harness.py
+```
+
+- Only regenerate goldens when you intentionally want to accept new
+  behavior (for example after a deliberate improvement). Ask a
+  reviewer to confirm the change before committing regenerated
+  goldens.
+
+If you want help
+
+- If the harness shows differences and you are not sure why, copy
+  the `golden_run.log` file into the issue or PR and someone will
+  help triage it. The CI is set up to always upload that log when the
+  golden step runs.
+
+
 [status-image]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml/badge.svg
 [status-link]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml
 [version-image]: https://img.shields.io/pypi/v/slugify-rs.svg

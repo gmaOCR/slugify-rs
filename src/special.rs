@@ -139,6 +139,7 @@ mod tests {
             .lowercase(true)
             .replacements(Vec::<(&str, &str)>::new())
             .allow_unicode(false)
+            .transliterate_icons(false)
             .build()
             .unwrap();
         let out = crate::slugify::slugify_with_options_public(&opts, &pre);

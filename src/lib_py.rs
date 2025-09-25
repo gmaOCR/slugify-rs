@@ -19,7 +19,7 @@ use crate::slugify as slugify_mod;
     lowercase=true,
     replacements=None,
     allow_unicode=false,
-    _transliterate_icons=false
+    transliterate_icons=true
 ))]
 fn slugify(
     text: &str,
@@ -35,7 +35,7 @@ fn slugify(
     lowercase: bool,
     replacements: Option<Vec<(String, String)>>,
     allow_unicode: bool,
-    _transliterate_icons: bool,
+    transliterate_icons: bool,
 ) -> PyResult<String> {
     let sep = separator.unwrap_or(slugify_mod::DEFAULT_SEPARATOR);
 
@@ -67,6 +67,9 @@ fn slugify(
         .lowercase(lowercase)
         .replacements(repl_refs)
         .allow_unicode(allow_unicode);
+    // Respect transliterate_icons if provided by caller and forward it
+    // to the Rust options builder.
+    let builder = builder.transliterate_icons(transliterate_icons);
 
     let opts = builder
         .build()
