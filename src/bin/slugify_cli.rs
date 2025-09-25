@@ -107,7 +107,38 @@ mod tests {
 
     fn bin_path() -> String {
         let manifest = env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
-        format!("{}/target/debug/slugify_cli", manifest)
+
+        // Candidate locations for the compiled CLI binary. CI may set
+        // a custom target dir (e.g. --target-dir .../target/llvm-cov-target)
+        // or the binary may have been built in release mode. Try several
+        // likely locations and return the first that exists.
+        let mut candidates = Vec::new();
+
+        // If CARGO_TARGET_DIR is set (cargo invoked with --target-dir), prefer it
+        if let Ok(cd) = env::var("CARGO_TARGET_DIR") {
+            candidates.push(format!("{}/debug/slugify_cli", cd));
+            candidates.push(format!("{}/release/slugify_cli", cd));
+        }
+
+        // Default target locations relative to the manifest
+        candidates.push(format!("{}/target/debug/slugify_cli", manifest));
+        candidates.push(format!("{}/target/release/slugify_cli", manifest));
+
+        // Special case used by our CI coverage job
+        candidates.push(format!("{}/target/llvm-cov-target/debug/slugify_cli", manifest));
+        candidates.push(format!("{}/target/llvm-cov-target/release/slugify_cli", manifest));
+
+        for c in &candidates {
+            if std::path::Path::new(c).exists() {
+                return c.to_string();
+            }
+        }
+
+        // Fallback: first candidate (the conventional debug path)
+        candidates
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| format!("{}/target/debug/slugify_cli", manifest))
     }
 
     #[test]
