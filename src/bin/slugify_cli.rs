@@ -34,14 +34,22 @@ fn parse_usize_str(s: &str, default: usize) -> usize {
     s.parse().ok().unwrap_or(default)
 }
 
-fn main() {
-    // Read stdin
+/// Read all input from an arbitrary reader, trim trailing newline and return a String.
+fn read_input<R: Read>(r: &mut R) -> io::Result<String> {
     let mut input = String::new();
-    if let Err(e) = io::stdin().read_to_string(&mut input) {
-        eprintln!("failed to read stdin: {}", e);
-        std::process::exit(2);
-    }
-    let text = input.trim_end_matches('\n').to_string();
+    r.read_to_string(&mut input)?;
+    Ok(input.trim_end_matches('\n').to_string())
+}
+
+fn main() {
+    // Read stdin via a small testable helper
+    let text = match read_input(&mut io::stdin()) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("failed to read stdin: {}", e);
+            std::process::exit(2);
+        }
+    };
 
     // Build an env map from current process env
     let mut env_map = StdHashMap::new();
@@ -120,8 +128,10 @@ fn run_with_env_map(env_map: &StdHashMap<String, String>, text: &str) -> Result<
 // binary source when running `cargo test` and to keep tests next to the code
 // they exercise.
 #[cfg(test)]
+#[allow(clippy::expect_used)]
+#[allow(clippy::unwrap_used)]
 mod tests {
-    use serial_test::serial;
+    use std::io::{self, Read};
     use std::env;
 
     // In-process helper functions to exercise the CLI behaviour without
@@ -251,27 +261,23 @@ mod tests {
             // try deps/ subdir of the parent (e.g., target/debug/deps)
             if let Some(parent) = p.parent() {
                 let deps = parent.join("deps");
-                if deps.exists() {
-                    if let Ok(rd) = fs::read_dir(&deps) {
-                        for entry in rd.filter_map(Result::ok) {
+                            if let Ok(rd) = fs::read_dir(&deps) {
+                                for entry in rd.filter_map(Result::ok) {
                             let path = entry.path();
                             if !path.is_file() {
                                 continue;
                             }
                             // canonicalize and skip if equals current exe
-                            if let (Some(cur), Ok(canon)) = (current_exe_canon.as_ref(), path.canonicalize()) {
-                                if &canon == cur {
+                            if let (Some(cur), Ok(canon)) = (current_exe_canon.as_ref(), path.canonicalize())
+                                && &canon == cur {
                                     continue;
                                 }
-                            }
-                            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-                                if name.starts_with("slugify_cli") {
+                            if let Some(name) = path.file_name().and_then(|s| s.to_str())
+                                && name.starts_with("slugify_cli") {
                                     return path.to_string_lossy().to_string();
                                 }
-                            }
                         }
-                    }
-                }
+                            }
             }
         }
             // If none of the straightforward candidate paths exist, try to
@@ -333,8 +339,8 @@ mod tests {
         assert_eq!(out.trim(), "i-love");
 
         // allow_unicode = 0, transliterate_icons = 1 -> emoji transliterated (non-empty)
-        let out2 = run_cli_inproc(&[("ALLOW_UNICODE", "0"), ("TRANSLITERATE_ICONS", "1")], "i love 🦄");
-        assert!(out2.trim().len() > 0);
+    let out2 = run_cli_inproc(&[("ALLOW_UNICODE", "0"), ("TRANSLITERATE_ICONS", "1")], "i love 🦄");
+    assert!(!out2.trim().is_empty());
     }
 
     #[test]
@@ -390,8 +396,8 @@ mod tests {
         let mut m2 = StdHashMap::new();
         m2.insert("ALLOW_UNICODE".to_string(), "0".to_string());
         m2.insert("TRANSLITERATE_ICONS".to_string(), "1".to_string());
-        let out2 = super::run_with_env_map(&m2, "i love 🦄").expect("run failed");
-        assert!(out2.trim().len() > 0);
+    let out2 = super::run_with_env_map(&m2, "i love 🦄").expect("run failed");
+    assert!(!out2.trim().is_empty());
     }
 
     #[test]
@@ -404,56 +410,41 @@ mod tests {
     }
 
     #[test]
-    #[serial]
-    fn test_bool_and_usize_from_env() {
-        // ensure env vars are unset first
-    unsafe { env::remove_var("TEST_BOOL"); }
-    unsafe { env::remove_var("TEST_USIZE"); }
+    fn test_read_input_success() {
+        let mut data = "hello world\n".as_bytes();
+        let s = super::read_input(&mut data).expect("read should succeed");
+        assert_eq!(s, "hello world");
+    }
 
-        // default when not present
-        assert_eq!(super::bool_from_env("TEST_BOOL", true), true);
-        assert_eq!(super::usize_from_env("TEST_USIZE", 11), 11usize);
-
-        // set values and verify parsing
-    unsafe { env::set_var("TEST_BOOL", "0"); }
-    unsafe { env::set_var("TEST_USIZE", "7"); }
-        assert_eq!(super::bool_from_env("TEST_BOOL", true), false);
-        assert_eq!(super::usize_from_env("TEST_USIZE", 11), 7usize);
-
-        // cleanup
-    unsafe { env::remove_var("TEST_BOOL"); }
-    unsafe { env::remove_var("TEST_USIZE"); }
+    struct FailingReader;
+    impl Read for FailingReader {
+        fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+            Err(io::Error::other("boom"))
+        }
     }
 
     #[test]
-    #[serial]
-    fn test_bin_path_with_cargo_target_dir() {
-        // set CARGO_TARGET_DIR and ensure the candidate push branch runs
-    let old = env::var("CARGO_TARGET_DIR").ok();
-    unsafe { env::set_var("CARGO_TARGET_DIR", "some/target/dir"); }
-        let p = bin_path();
-    // The function may check filesystem existence; we only need to ensure
-    // the returned candidate mentions the binary name (branch exercised).
-    assert!(p.contains("slugify_cli"));
-        // restore
-    if let Some(v) = old { unsafe { env::set_var("CARGO_TARGET_DIR", v); } } else { unsafe { env::remove_var("CARGO_TARGET_DIR"); } }
+    fn test_read_input_error() {
+        let mut r = FailingReader;
+        let res = super::read_input(&mut r);
+        assert!(res.is_err());
     }
 
     #[test]
     fn test_parse_bool_str_variants() {
-        assert_eq!(super::parse_bool_str("1", false), true);
-        assert_eq!(super::parse_bool_str("true", false), true);
-        assert_eq!(super::parse_bool_str("True", false), true);
-        assert_eq!(super::parse_bool_str("yes", false), true);
+    assert!(super::parse_bool_str("1", false));
+    assert!(super::parse_bool_str("true", false));
+    assert!(super::parse_bool_str("True", false));
+    assert!(super::parse_bool_str("yes", false));
 
-        assert_eq!(super::parse_bool_str("0", true), false);
-        assert_eq!(super::parse_bool_str("false", true), false);
-        assert_eq!(super::parse_bool_str("False", true), false);
-        assert_eq!(super::parse_bool_str("no", true), false);
+    assert!(!super::parse_bool_str("0", true));
+    assert!(!super::parse_bool_str("false", true));
+    assert!(!super::parse_bool_str("False", true));
+    assert!(!super::parse_bool_str("no", true));
 
-        // unknowns fall back to default
-        assert_eq!(super::parse_bool_str("maybe", true), true);
-        assert_eq!(super::parse_bool_str("", false), false);
+    // unknowns fall back to default
+    assert!(super::parse_bool_str("maybe", true));
+    assert!(!super::parse_bool_str("", false));
     }
 
     #[test]

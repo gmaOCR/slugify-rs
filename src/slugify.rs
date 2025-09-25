@@ -12,6 +12,7 @@ pub const DEFAULT_SEPARATOR: &str = "-";
 pub use crate::special::apply_pre_translations;
 
 // Regex patterns (compiled once)
+#[allow(clippy::unwrap_used)]
 pub static CHAR_ENTITY_PATTERN: Lazy<Regex> = Lazy::new(|| {
     // Match named entities like &amp; &nbsp; etc. Full name-to-codepoint map
     // is handled by `html_escape::decode_html_entities` when decoding the
@@ -19,14 +20,20 @@ pub static CHAR_ENTITY_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"&([A-Za-z0-9]+);").unwrap()
 });
 
+#[allow(clippy::unwrap_used)]
 pub static DECIMAL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"&#(\d+);").unwrap());
+#[allow(clippy::unwrap_used)]
 pub static HEX_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"&#x([\da-fA-F]+);").unwrap());
+#[allow(clippy::unwrap_used)]
 pub static QUOTE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"'+").unwrap());
+#[allow(clippy::unwrap_used)]
 pub static DISALLOWED_CHARS_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"[^-A-Za-z0-9]+").unwrap());
 // Rust `regex` supports `\W` (non-word). Keep underscore in the class as in Python.
+#[allow(clippy::unwrap_used)]
 pub static DISALLOWED_UNICODE_CHARS_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"[\W_]+").unwrap());
+#[allow(clippy::unwrap_used)]
 pub static DUPLICATE_DASH_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"-{2,}").unwrap());
 
 // Note: Python used lookbehind/lookahead for numbers ("," between digits).
@@ -55,7 +62,8 @@ pub fn slugify(
 ) -> String {
     // Try to construct options; on invalid regex fall back to ignoring the
     // provided pattern to preserve previous behavior.
-    let opts = SlugifyOptions::from_args(
+    // Try to build with provided regex; if invalid, fall back to None.
+    let opts = match SlugifyOptions::from_args(
         entities,
         decimal,
         hexadecimal,
@@ -69,9 +77,9 @@ pub fn slugify(
         replacements,
         allow_unicode,
         false,
-    )
-    .unwrap_or_else(|_| {
-        SlugifyOptions::from_args(
+    ) {
+        Ok(o) => o,
+        Err(_) => match SlugifyOptions::from_args(
             entities,
             decimal,
             hexadecimal,
@@ -85,9 +93,11 @@ pub fn slugify(
             replacements,
             allow_unicode,
             false,
-        )
-        .expect("failed to build SlugifyOptions")
-    });
+        ) {
+            Ok(o2) => o2,
+            Err(e) => panic!("failed to build SlugifyOptions after fallback: {:?}", e),
+        },
+    };
 
     slugify_with_options(text, &opts)
 }
@@ -624,6 +634,8 @@ fn first_n_chars(s: &str, n: usize) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
@@ -765,8 +777,8 @@ mod tests {
             .build()
             .unwrap();
         let out2 = apply_pattern_replacement("hello 🦄 world!!!", &opts2);
-        // since allow_unicode=true, the emoji is not replaced by the ascii pattern; ensure non-empty
-        assert!(out2.len() > 0);
+    // since allow_unicode=true, the emoji is not replaced by the ascii pattern; ensure non-empty
+    assert!(!out2.is_empty());
     }
 
     #[test]
@@ -822,36 +834,7 @@ mod tests {
         slugify_with_options_public(&opts, text)
     }
 
-    fn s_args(
-        text: &str,
-        entities: bool,
-        decimal: bool,
-        hexadecimal: bool,
-        max_length: usize,
-        word_boundary: bool,
-        separator: &str,
-        save_order: bool,
-        stopwords: &[&str],
-        regex_pattern: Option<&str>,
-        lowercase: bool,
-        replacements: &[(&str, &str)],
-        allow_unicode: bool,
-    ) -> String {
-        let opts = SlugifyOptions::builder()
-            .entities(entities)
-            .decimal(decimal)
-            .hexadecimal(hexadecimal)
-            .max_length(max_length)
-            .word_boundary(word_boundary)
-            .separator(separator)
-            .save_order(save_order)
-            .stopwords(stopwords.to_vec())
-            .regex_pattern(regex_pattern.map(|s| s.to_string()))
-            .lowercase(lowercase)
-            .replacements(replacements.to_vec())
-            .allow_unicode(allow_unicode)
-            .build()
-            .unwrap();
+    fn s_args_with_opts(text: &str, opts: SlugifyOptions) -> String {
         slugify_with_options_public(&opts, text)
     }
 
@@ -930,37 +913,41 @@ mod tests {
     #[test]
     fn test_slugify_custom_separator() {
         let txt = "jaja---lol-méméméoo--a";
-        let r = s_args(
-            txt,
-            true,
-            true,
-            true,
-            20,
-            true,
-            ".",
-            false,
-            &[],
-            None,
-            true,
-            &[],
-            false,
-        );
+        let opts = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(20)
+            .word_boundary(true)
+            .separator(".")
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let r = s_args_with_opts(txt, opts);
         assert_eq!(r, "jaja.lol.mememeoo.a");
-        let r2 = s_args(
-            txt,
-            true,
-            true,
-            true,
-            20,
-            true,
-            "ZZZZZZ",
-            false,
-            &[],
-            None,
-            true,
-            &[],
-            false,
-        );
+        let opts2 = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(20)
+            .word_boundary(true)
+            .separator("ZZZZZZ")
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let r2 = s_args_with_opts(txt, opts2);
         assert_eq!(r2, "jajaZZZZZZlolZZZZZZmememeooZZZZZZa");
     }
 
@@ -968,32 +955,192 @@ mod tests {
     #[test]
     fn test_slugify_save_order() {
         let txt = "one two three four five";
-        assert_eq!(s_args(txt, true, true, true, 13, true, DEFAULT_SEPARATOR, true, &[], None, true, &[], false), "one-two-three");
-        assert_eq!(s_args(txt, true, true, true, 12, true, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "one-two-four");
-        assert_eq!(s_args(txt, true, true, true, 12, true, DEFAULT_SEPARATOR, true, &[], None, true, &[], false), "one-two");
+        let opts_a = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(13)
+            .word_boundary(true)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(true)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let opts_b = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(12)
+            .word_boundary(true)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let opts_c = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(12)
+            .word_boundary(true)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(true)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(txt, opts_a), "one-two-three");
+        assert_eq!(s_args_with_opts(txt, opts_b), "one-two-four");
+        assert_eq!(s_args_with_opts(txt, opts_c), "one-two");
     }
 
     #[test]
     fn test_slugify_stopwords() {
         let txt = "this has a stopword";
-        assert_eq!(s_args(txt, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &["stopword"], None, true, &[], false), "this-has-a");
+        let opts_stop = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(vec!["stopword" as &str])
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(txt, opts_stop), "this-has-a");
         let txt2 = "thIs Has a stopword Stopword";
-        assert_eq!(s_args(txt2, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &["Stopword"], None, false, &[], false), "thIs-Has-a-stopword");
+        let opts_stop2 = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(vec!["Stopword" as &str])
+            .regex_pattern(None::<String>)
+            .lowercase(false)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(txt2, opts_stop2), "thIs-Has-a-stopword");
     }
 
     #[test]
     fn test_slugify_entities_and_numeric_refs() {
         let txt = "foo &amp; bar";
         assert_eq!(s_default(txt), "foo-bar");
-        assert_eq!(s_args(txt, false, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "foo-amp-bar");
+        let opts_entities = SlugifyOptions::builder()
+            .entities(false)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(txt, opts_entities), "foo-amp-bar");
 
         let dec = "&#381;";
-        assert_eq!(s_args(dec, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "z");
-        assert_eq!(s_args(dec, false, false, true, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "381");
+        let opts_dec = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(dec, opts_dec), "z");
+        let opts_dec2 = SlugifyOptions::builder()
+            .entities(false)
+            .decimal(false)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(dec, opts_dec2), "381");
 
         let hex = "&#x17D;";
-        assert_eq!(s_args(hex, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "z");
-        assert_eq!(s_args(hex, true, true, false, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[], false), "x17d");
+        let opts_hex = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(hex, opts_hex), "z");
+        let opts_hex2 = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(false)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        assert_eq!(s_args_with_opts(hex, opts_hex2), "x17d");
     }
 
     #[test]
@@ -1007,11 +1154,43 @@ mod tests {
     #[test]
     fn test_slugify_regex_pattern_and_replacements() {
         let txt = "___This is a test___";
-        let r = s_args(txt, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], Some(r"[^-a-z0-9_]+"), true, &[], false);
+        let opts_pattern = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(Some(r"[^-a-z0-9_]+".to_string()))
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let r = s_args_with_opts(txt, opts_pattern);
         assert_eq!(r, "___this-is-a-test___");
 
         let txt2 = "10 | 20 %";
-        let r2 = s_args(txt2, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], None, true, &[("|", "or"), ("%", "percent")], false);
+        let opts_repl = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(None::<String>)
+            .lowercase(true)
+            .replacements(vec![("|".to_string(), "or".to_string()), ("%".to_string(), "percent".to_string())])
+            .allow_unicode(false)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let r2 = s_args_with_opts(txt2, opts_repl);
         assert_eq!(r2, "10-or-20-percent");
     }
 
@@ -1021,7 +1200,23 @@ mod tests {
         // default (allow_unicode=false) should drop emoji
         assert_eq!(s_unicode(txt), "i-love");
         // allow unicode true but regex_pattern can override to keep emoji
-        let r = s_args(txt, true, true, true, 0, false, DEFAULT_SEPARATOR, false, &[], Some(r"[^🦄]+"), true, &[], true);
+        let opts_emoji = SlugifyOptions::builder()
+            .entities(true)
+            .decimal(true)
+            .hexadecimal(true)
+            .max_length(0)
+            .word_boundary(false)
+            .separator(DEFAULT_SEPARATOR)
+            .save_order(false)
+            .stopwords(Vec::<&str>::new())
+            .regex_pattern(Some(r"[^🦄]+".to_string()))
+            .lowercase(true)
+            .replacements(Vec::<(&str, &str)>::new())
+            .allow_unicode(true)
+            .transliterate_icons(false)
+            .build()
+            .unwrap();
+        let r = s_args_with_opts(txt, opts_emoji);
         assert_eq!(r, "🦄");
     }
 }

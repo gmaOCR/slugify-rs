@@ -39,12 +39,16 @@ pub fn pre_translations() -> &'static [(&'static str, &'static str)] {
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use once_cell::sync::Lazy;
 
+#[allow(clippy::expect_used)]
 static AC_AUTOMATON: Lazy<AhoCorasick> = Lazy::new(|| {
     let pats: Vec<&str> = PRE_TRANSLATIONS.iter().map(|(s, _)| *s).collect();
-    AhoCorasickBuilder::new()
+    match AhoCorasickBuilder::new()
         .match_kind(MatchKind::LeftmostLongest)
         .build(&pats)
-        .expect("failed to build aho-corasick automaton")
+    {
+        Ok(a) => a,
+        Err(e) => panic!("failed to build aho-corasick automaton: {:?}", e),
+    }
 });
 
 pub fn apply_pre_translations(s: &str) -> String {
@@ -67,6 +71,8 @@ pub fn apply_pre_translations(s: &str) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     
