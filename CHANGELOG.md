@@ -54,3 +54,8 @@ Changes since v0.1.1 (high level):
 - Switched CI coverage to use an alias that excludes `src/bin/` to avoid
   environment/FS-dependent glue code from skewing coverage numbers.
 
+
+## [v0.1.21] - 2025-09-25
+### Added
+- Restored and added README badges (status, PyPI version badge, and coverage badges)
+
