@@ -1,5 +1,9 @@
 ## slugify-rs — simple and fast slugs for text
 
+[![status-image]][status-link]
+[![version-image]][version-link]
+[![coverage-image]][coverage-link]
+
 This project provides a small Rust library that turns text into a
 "slug" — a short, URL-friendly string. For example, "Hello World!"
 becomes "hello-world". There is also an optional Python extension so

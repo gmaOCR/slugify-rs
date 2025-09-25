@@ -1,6 +1,6 @@
 [alias]
-coverage = "llvm-cov --package slugify-rs --html --ignore-filename-regex '/usr/src|/rustc-|src/bin/.*' --open"
-coverage-lcov = "llvm-cov --package slugify-rs --lcov --output-path lcov.info --ignore-filename-regex '/usr/src|/rustc-|src/bin/.*'"
+coverage = "llvm-cov --package slugify-rs --html --ignore-filename-regex '/usr/src|/rustc-|src/bin/.*|bin/.*' --open"
+coverage-lcov = "llvm-cov --package slugify-rs --lcov --output-path lcov.info --ignore-filename-regex '/usr/src|/rustc-|src/bin/.*|bin/.*'"
 
 [target.aarch64-apple-darwin]
 rustflags = [
