@@ -3,19 +3,35 @@ use std::io::{self, Read};
 
 #[allow(dead_code)]
 fn bool_from_env(key: &str, default: bool) -> bool {
-    env::var(key)
-        .ok()
-        .and_then(|v| match v.as_str() {
-            "1" | "true" | "True" | "yes" => Some(true),
-            "0" | "false" | "False" | "no" => Some(false),
-            _ => None,
-        })
-        .unwrap_or(default)
+    // delegate parsing to the pure helper so it can be tested without
+    // mutating process environment in tests.
+    match env::var(key).ok().as_deref() {
+        Some(s) => parse_bool_str(s, default),
+        None => default,
+    }
 }
 
 #[allow(dead_code)]
 fn usize_from_env(key: &str, default: usize) -> usize {
-    env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+    // delegate parsing to pure helper for testability
+    match env::var(key).ok().as_deref() {
+        Some(s) => parse_usize_str(s, default),
+        None => default,
+    }
+}
+
+// Pure helpers that parse string inputs. Keeping them near the CLI code
+// makes it simple to test parsing variants without touching process env.
+fn parse_bool_str(s: &str, default: bool) -> bool {
+    match s {
+        "1" | "true" | "True" | "yes" => true,
+        "0" | "false" | "False" | "no" => false,
+        _ => default,
+    }
+}
+
+fn parse_usize_str(s: &str, default: usize) -> usize {
+    s.parse().ok().unwrap_or(default)
 }
 
 fn main() {
@@ -105,6 +121,7 @@ fn run_with_env_map(env_map: &StdHashMap<String, String>, text: &str) -> Result<
 // they exercise.
 #[cfg(test)]
 mod tests {
+    use serial_test::serial;
     use std::env;
 
     // In-process helper functions to exercise the CLI behaviour without
@@ -384,5 +401,66 @@ mod tests {
         // exercised string-building paths.
         let p = bin_path();
         assert!(p.contains("slugify_cli"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_bool_and_usize_from_env() {
+        // ensure env vars are unset first
+    unsafe { env::remove_var("TEST_BOOL"); }
+    unsafe { env::remove_var("TEST_USIZE"); }
+
+        // default when not present
+        assert_eq!(super::bool_from_env("TEST_BOOL", true), true);
+        assert_eq!(super::usize_from_env("TEST_USIZE", 11), 11usize);
+
+        // set values and verify parsing
+    unsafe { env::set_var("TEST_BOOL", "0"); }
+    unsafe { env::set_var("TEST_USIZE", "7"); }
+        assert_eq!(super::bool_from_env("TEST_BOOL", true), false);
+        assert_eq!(super::usize_from_env("TEST_USIZE", 11), 7usize);
+
+        // cleanup
+    unsafe { env::remove_var("TEST_BOOL"); }
+    unsafe { env::remove_var("TEST_USIZE"); }
+    }
+
+    #[test]
+    #[serial]
+    fn test_bin_path_with_cargo_target_dir() {
+        // set CARGO_TARGET_DIR and ensure the candidate push branch runs
+    let old = env::var("CARGO_TARGET_DIR").ok();
+    unsafe { env::set_var("CARGO_TARGET_DIR", "some/target/dir"); }
+        let p = bin_path();
+    // The function may check filesystem existence; we only need to ensure
+    // the returned candidate mentions the binary name (branch exercised).
+    assert!(p.contains("slugify_cli"));
+        // restore
+    if let Some(v) = old { unsafe { env::set_var("CARGO_TARGET_DIR", v); } } else { unsafe { env::remove_var("CARGO_TARGET_DIR"); } }
+    }
+
+    #[test]
+    fn test_parse_bool_str_variants() {
+        assert_eq!(super::parse_bool_str("1", false), true);
+        assert_eq!(super::parse_bool_str("true", false), true);
+        assert_eq!(super::parse_bool_str("True", false), true);
+        assert_eq!(super::parse_bool_str("yes", false), true);
+
+        assert_eq!(super::parse_bool_str("0", true), false);
+        assert_eq!(super::parse_bool_str("false", true), false);
+        assert_eq!(super::parse_bool_str("False", true), false);
+        assert_eq!(super::parse_bool_str("no", true), false);
+
+        // unknowns fall back to default
+        assert_eq!(super::parse_bool_str("maybe", true), true);
+        assert_eq!(super::parse_bool_str("", false), false);
+    }
+
+    #[test]
+    fn test_parse_usize_str_variants() {
+        assert_eq!(super::parse_usize_str("0", 7), 0usize);
+        assert_eq!(super::parse_usize_str("42", 0), 42usize);
+        assert_eq!(super::parse_usize_str("notanumber", 5), 5usize);
+        assert_eq!(super::parse_usize_str("", 9), 9usize);
     }
 }

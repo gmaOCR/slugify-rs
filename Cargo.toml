@@ -33,6 +33,9 @@ version = "0.26"
 optional = true
 features = ["extension-module"]
 
+[dev-dependencies]
+serial_test = "2.0"
+
 # Package metadata for maturin
 # Package metadata for maturin
 [package.metadata.maturin]
