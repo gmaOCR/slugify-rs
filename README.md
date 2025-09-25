@@ -190,8 +190,13 @@ If you want help
 
 
 [status-image]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml/badge.svg
+
 [status-link]: https://github.com/gmaOCR/slugify-rs/actions/workflows/ci.yml
+
 [version-image]: https://img.shields.io/pypi/v/slugify-rs.svg
+
 [version-link]: https://pypi.python.org/pypi/slugify-rs
+
 [coverage-image]: https://codecov.io/gh/gmaOCR/slugify-rs/branch/master/graph/badge.svg
-[coverage-link]: https://codecov.io/gh/gmaOCR/slugify-rs
+
+[coverage-link]: https://coveralls.io/r/gmaOCR/python-slugify
