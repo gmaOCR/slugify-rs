@@ -34,6 +34,9 @@ Codecov in CI; locally you can produce the same artifacts.
   # run coverage (this runs the test suite instrumented)
   cargo llvm-cov --package slugify-rs --lcov --output-path lcov.info
 
+  # Alternatively use the convenience alias (excludes src/bin by default):
+  # cargo coverage
+
   # inspect or upload lcov.info to Codecov
   # codecov supports lcov format
 

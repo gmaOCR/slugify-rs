@@ -41,6 +41,11 @@ Actions récentes :
 - Ajout de tests unitaires pour `parse_bool_str` et `parse_usize_str`.
 - Ajout de tests séquentiels (via `serial_test`) qui manipulent des variables d'environnement et exercent `bool_from_env`, `usize_from_env` et la logique `bin_path` qui construit des chemins candidats.
 - Exécution de `cargo test` et génération d'un rapport de couverture via `cargo llvm-cov --html`.
+  - Note: the repository provides a `cargo coverage` alias that runs
+    `cargo llvm-cov` while excluding instrumenting files under `src/bin/` (these
+    are CLI glue code paths that are intentionally excluded from coverage by
+    default because they are environment/FS dependent). Use `cargo coverage` to
+    generate the same report locally.
 
 Chiffres clés (après changements) :
 - `bin/slugify_cli.rs` :
