@@ -141,7 +141,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
 pip install maturin
-pip install ../python-slugify
+pip install python-slugify
 ```
 
 2. Build and install the Rust Python binding into the venv (so the

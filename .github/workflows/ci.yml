@@ -120,7 +120,7 @@ jobs:
       - name: Install reference python-slugify (local copy)
         run: |
           . .venv/bin/activate
-          pip install ./python-slugify
+          pip install python-slugify
 
       - name: Run golden harness (will fail CI on diffs)
         run: |
