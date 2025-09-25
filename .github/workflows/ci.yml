@@ -67,7 +67,8 @@ jobs:
         run: |
           # Generate lcov info for the crate. cargo-llvm-cov will run tests with
           # instrumentation and collect coverage data.
-          cargo llvm-cov --package slugify-rs --lcov --output-path lcov.info
+          # Use the repo alias which adds default ignore patterns (e.g. src/bin)
+          cargo coverage -- --lcov --output-path lcov.info
 
       - name: Show lcov head for debugging
         run: |
