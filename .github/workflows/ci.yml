@@ -68,7 +68,7 @@ jobs:
           # Generate lcov info for the crate. cargo-llvm-cov will run tests with
           # instrumentation and collect coverage data.
           # Use the repo alias which adds default ignore patterns (e.g. src/bin)
-          cargo coverage -- --lcov --output-path lcov.info
+          cargo coverage-lcov
 
       - name: Show lcov head for debugging
         run: |
